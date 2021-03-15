@@ -49,3 +49,23 @@ exports.executeSql = async function (req, res) {
         res.status(500).send();
     }
 };
+
+exports.executeSql = async function (sql) {
+    try {
+        const [rows] = await db.getPool().query(sql);
+        return rows;
+    } catch (err) {
+        console.log(err.sql);
+        throw err;
+    }
+};
+
+
+
+// exports.postEvents = async function (req, res) {
+//
+// }
+//
+// exports.getEventByID = async function (req, res) {
+//
+// }
