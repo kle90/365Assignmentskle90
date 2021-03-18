@@ -13,11 +13,10 @@ exports.getEvents = async function (req, res) {
         "event.date as Date " +
         "FROM event_attendees " +
         "JOIN user ON event_attendees.user_id = user.id " +
-        "JOIN event ON event_attendees.event_id = event.id " +
-        "ORDER BY convert(datetime, event.date, 103) ASC"
+        "JOIN event ON event_attendees.event_id = event.id "
     const [ rows ] = await conn.query(query);
     return rows
-}
+};
 
 exports.getOneEvent = async function (req, res) {
     console.log( "Request to get a single event from the database using id..." );
@@ -26,4 +25,4 @@ exports.getOneEvent = async function (req, res) {
     const query = "SELECT * FROM event";
     const [ rows ] = await conn.query(query);
     return rows
-}
+};
