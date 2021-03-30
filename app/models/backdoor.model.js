@@ -1,5 +1,7 @@
 const db = require('../../config/db');
 const fs = require('mz/fs');
+const crypto = require('crypto')
+const passwordHash = require('password-hash');
 
 const imageDirectory = './storage/images/';
 const defaultImageDirectory = './storage/default/';
@@ -58,13 +60,19 @@ async function populateDefaultUsers() {
     }
 }
 
-
-
 async function changePasswordToHash(user, passwordIndex) {
     // TODO you need to implement "passwords.hash()" yourself, then uncomment the line below.
-    // user[passwordIndex] = await passwords.hash(user[passwordIndex]);
+    user[passwordIndex] = await passwordHash.generate(user[passwordIndex]);
 
     // It is recommended you use a reputable cryptology library to do the actual hashing/comparing for you...
 }
 
-
+exports.executeSql = async function (sql) {
+    try {
+        const [rows] = await db.getPool().query(sql);
+        return rows;
+    } catch (err) {
+        console.log(err.sql);
+        throw err;
+    }
+};
