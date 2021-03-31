@@ -94,7 +94,7 @@ exports.getEvents = async function (req, res) {
 };
 
 // POST AN EVENT
-exports.addEvent = async function (req, res) {
+exports.addEvent = async function (req, res, organID) {
     const conn = await db.getPool().getConnection();
     let sqlDateVal = req.body.date;
     let sqlIsOnlineVal = null;
@@ -107,7 +107,7 @@ exports.addEvent = async function (req, res) {
     let sqlOraganizerID = `SELECT user.id FROM user WHERE auth_token = "${req.headers["x-authorization"]}"`;
     const OraganizerID = await conn.query(sqlOraganizerID);
 
-    console.log("oraganier id is", OraganizerID[0][0].id);
+    console.log("oraganier id is", OraganizerID);
 
 
     let sqlInsert = `INSERT INTO event (title, description, date`
@@ -178,6 +178,99 @@ exports.getOneEvent = async function (eventID) {
     return rows;
 };
 
+//PATCH event
+exports.patchAevent = async function (req, res, eventID) {
+    const conn = await db.getPool().getConnection();
+
+    let title = "";
+    let description = "";
+    let date = ""
+    let isOnline = "";
+    let url = "";
+    let venue = "";
+    let capacity = "";
+    let requiresAttendanceControl = "";
+    let fee = "";
+
+    let sqlList = []
+
+    //console.log("date is ", req.body.date);
+    //console.log("date is ", req.body.date.toISOString().slice(0, 19).replace('T', ' '))
+
+    if (req.body.title != undefined) {
+        title = `title = "${req.body.title}"`
+        sqlList.push(title);
+    } if (req.body.description) {
+        description = `description = "${req.body.description}"`
+        sqlList.push(description);
+    } if (req.body.date != undefined) {
+        date = `date = "${req.body.date.slice(0, 19).replace('T', ' ')}"`;
+        sqlList.push(date);
+    } if (req.body.isOnline != undefined) {
+        if (req.body.isOnline == true) {
+            isOnline = `is_online = ${1}`
+        } else {
+            isOnline = `is_online = ${0}`
+        }
+        sqlList.push(isOnline);
+    } if (req.body.url != undefined) {
+        url = `url = "${req.body.url}"`;
+        sqlList.push(url);
+    } if (req.body.venue != undefined) {
+        venue = `venue = "${req.body.venue}"`;
+        sqlList.push(venue);
+    } if (req.body.capacity) {
+        capacity = `capacity = ${req.body.capacity}`;
+        sqlList.push(capacity);
+    } if (req.body.requiresAttendanceControl != undefined) {
+        if (req.body.requiresAttendanceControl == true) {
+            requiresAttendanceControl = `requires_attendance_control = ${1}`;
+        } else {
+            requiresAttendanceControl = `requires_attendance_control = ${0}`;;
+        }
+        sqlList.push(requiresAttendanceControl);
+    } if (req.body.fee != undefined) {
+        fee = `fee = ${req.body.fee}`;
+        sqlList.push(fee);
+    }
+
+    sqlMain = "UPDATE event SET"
+    sqlWhere = `WHERE event.id = ${eventID}`;
+    let count = 0
+    for (i=0; i <sqlList.length; i++) {
+        if (sqlList[i] != "") {
+            if (count == 0) {
+                count += 1
+                sqlMain = sqlMain + " " + sqlList[i]
+            } else {
+                sqlMain += ", " + sqlList[i];
+            }
+
+        }
+
+    }
+
+    let sqlFinal = sqlMain + " " + sqlWhere
+    console.log("sqlFinal is ", sqlFinal);
+    await conn.query(sqlFinal);
+    conn.release();
+}
+
+//DELETE EVENT
+exports.deleteEvent = async function (eventID) {
+    const conn = await db.getPool().getConnection();
+    const sqlDeleteEvent = `DELETE FROM event WHERE event.id = ${eventID}`;
+    const sqlDeleteEventAtten = `DELETE FROM event_attendees WHERE event_id = ${eventID}`;
+    const sqlDeleteEventCategory = `DELETE FROM event_category WHERE event_id = ${eventID}`;
+    console.log("sqlDeleteEvent is ", sqlDeleteEvent);
+    console.log("sqlDeleteEventCategory is ", sqlDeleteEventCategory);
+    console.log("sqlDeleteEventAtten is ", sqlDeleteEventAtten);
+    await conn.query(sqlDeleteEventAtten);
+    await conn.query(sqlDeleteEventCategory);
+    await conn.query(sqlDeleteEvent);
+    conn.release();
+};
+
 // GET ALL CATEGORIES
 exports.getCategory = async function (req, res) {
     console.log("Request to get categories from db...");
@@ -186,26 +279,42 @@ exports.getCategory = async function (req, res) {
     const [rows] = await conn.query(sql);
     conn.release();
     return rows
-}
+};
 
 // GET ALL ATTENDEES
-exports.getAttendees = async function (eventid) {
+exports.getAttendees = async function (eventid, userID, organizerID) {
     console.log("Request to get attendees from db...");
     const conn = await db.getPool().getConnection();
+
+    console.log("userID is ", userID);
+    console.log("organizerID is ", organizerID)
+
+    if (userID == organizerID) {
+        const sql = "SELECT user.id AS attendeeId, user.first_name AS firstName, user.last_name AS lastName, " +
+            "event_attendees.date_of_interest AS dateOfInterest, attendance_status.name AS status " +
+            "FROM user " +
+            "JOIN event_attendees ON user.id = event_attendees.user_id " +
+            "JOIN attendance_status ON attendance_status.id = event_attendees.attendance_status_id " +
+            `WHERE event_attendees.event_id = ${eventid} ` +
+            "ORDER BY event_attendees.date_of_interest"
+    }
+
     const sql = "SELECT user.id AS attendeeId, user.first_name AS firstName, user.last_name AS lastName, " +
         "event_attendees.date_of_interest AS dateOfInterest, attendance_status.name AS status " +
         "FROM user " +
         "JOIN event_attendees ON user.id = event_attendees.user_id " +
         "JOIN attendance_status ON attendance_status.id = event_attendees.attendance_status_id " +
-        `WHERE event_attendees.event_id = ${eventid} ` +
+        `WHERE event_attendees.event_id = ${eventid} AND attendance_status_id = ${1} ` +
         "ORDER BY event_attendees.date_of_interest"
+
+    console.log(sql);
 
     const [rows] = await conn.query(sql);
     conn.release();
     return rows;
-}
+};
 
-exports.getOraganizerID = async function (eventId) {
+exports.getOrganizerID = async function (eventId) {
     const conn = await db.getPool().getConnection();
     console.log("eventId in get organ iss ", eventId)
     const sql = `SELECT organizer_id FROM event WHERE event.id = ${Number(eventId)}`;
@@ -214,8 +323,12 @@ exports.getOraganizerID = async function (eventId) {
     conn.release();
     console.log("rows in getOraganizerID is ", rows)
     // console.log("rows is ", rows[0].id)
-    return rows[0].organizer_id;
-}
+    if (rows.length == 0) {
+        return rows
+    } else {
+        return rows[0].organizer_id;
+    }
+};
 
 exports.Authenticate = async function (UserId) {
     const conn = await db.getPool().getConnection();
@@ -226,7 +339,7 @@ exports.Authenticate = async function (UserId) {
     console.log("getAuth is ", getAuth)
     console.log("row in auth is ", row.length)
     return row;
-}
+};
 
 exports.ImgIsInDB = async function () {
     const conn = await db.getPool().getConnection();
@@ -235,7 +348,7 @@ exports.ImgIsInDB = async function () {
     console.log(rows)
     conn.release();
     return rows;
-}
+};
 
 exports.putEventAnImage = async function ( Userid, imageFile) {
     console.log("Request to put image to user profile....");
@@ -244,7 +357,7 @@ exports.putEventAnImage = async function ( Userid, imageFile) {
     console.log(putImageSql);
     await conn.query( putImageSql );
     conn.release();
-}
+};
 
 exports.checkCategory = async function ( categoryId ) {
     const conn = await db.getPool().getConnection();
@@ -252,7 +365,7 @@ exports.checkCategory = async function ( categoryId ) {
     const [rows] = await conn.query(sql);
     conn.release();
     return rows;
-}
+};
 
 exports.eventIDCheck = async function (eventID) {
     const conn = await db.getPool().getConnection();
@@ -260,7 +373,7 @@ exports.eventIDCheck = async function (eventID) {
     const [rows] = await conn.query(sql);
     conn.release();
     return rows;
-}
+};
 
 exports.getEImage = async function (eventID) {
     const conn = await db.getPool().getConnection();
@@ -268,11 +381,81 @@ exports.getEImage = async function (eventID) {
     const [rows] = await conn.query(sql);
     conn.release();
     return rows;
-}
+};
 
-// exports.postAttendees = async function (eventid) {
-//     console.log("Request attendance to an event....");
-//     const conn = await db.getPool().getConnection();
-//     const checkSql = "INSERT "
-// }
+exports.getUserIDViaAuth = async function (token) {
+    const conn = await db.getPool().getConnection();
+    console.log("token in getuseridviatuh is ", token)
+    const sql = `SELECT id FROM user WHERE auth_token = "${token}"`;
+    console.log("slq in getuseridvai auth is ", sql)
+    const [rows] = await conn.query(sql);
+    conn.release();
+    return rows;
+};
 
+exports.checkAttendees = async function (eventid, userID) {
+    const conn = await db.getPool().getConnection();
+    console.log("user id in checkattendess is ", userID)
+    const sql = `SELECT * FROM event_attendees WHERE user_id = ${userID} AND event_id = ${eventid}`;
+    console.log("sql in check attendess is ", sql);
+    const [rows] = await conn.query(sql);
+    console.log("rows in checkattendees is ", rows)
+    conn.release();
+    return rows;
+};
+
+exports.checkDate = async function(eventID) {
+    const conn = await db.getPool().getConnection();
+    const sql = `SELECT date FROM event WHERE event.id = ${eventID}`;
+    const [rows] = await conn.query(sql);
+    conn.release();
+    console.log("rows is ", rows);
+    return [rows]
+};
+
+exports.postAttendees = async function (eventid, userID, eventDate) {
+    // console.log("eventid in postatten is ", eventid);
+    // console.log("userID in postatten is ", userID);
+    // console.log("eventDate in postatten is ", eventDate[0][0].date);
+    const Date = eventDate[0][0].date;
+    const inputDAte = Date.toISOString().slice(0, 19).replace('T', ' ')
+    console.log("inputDAte is ", inputDAte);
+
+    const conn = await db.getPool().getConnection();
+    const postSql = "INSERT INTO event_attendees (event_id, user_id, attendance_status_id, date_of_interest) " +
+        `VALUES (${eventid}, ${userID[0].id}, ${2}, "${inputDAte}")`;
+
+    console.log("postsql is ", postSql)
+    await conn.query(postSql);
+    conn.release();
+};
+
+exports.getAttendeeStatus = async function (eventid, userID) {
+    const conn = await db.getPool().getConnection();
+    const sql = `SELECT attendance_status_id FROM event_attendees WHERE event_id = ${eventid} and user_id = ${userID}`;
+    const [rows] = await conn.query(sql);
+    conn.release();
+    return rows;
+};
+
+exports.deleteAttendee = async function (eventid, userID) {
+    const conn = await db.getPool().getConnection();
+    const sql = `DELETE FROM event_attendees WHERE event_id = ${eventid} AND user_id = ${userID}`;
+    console.log("sql in delete atten is ", sql)
+    await conn.query(sql);
+    conn.release();
+};
+
+exports.patchAttenEvent = async function (status) {
+    const conn = await db.getPool().getConnection();
+    if (status == "accepted") {
+        const insertStatus = 1;
+    } if (status == "pending") {
+        const insertStatus = 2;
+    } if (status == "rejected") {
+        const insertStatus = 13;
+    }
+    const sql = `UPDATE event_attendees SET attendance_status_id = ${insertStatus}`;
+    await conn.query(sql);
+    conn.release();
+};

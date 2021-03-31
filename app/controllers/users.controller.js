@@ -2,9 +2,13 @@ const user = require("../models/users.model")
 const auth = require('randomstring');
 const passwordHash = require('password-hash');
 const imageDirectory = './storage/images/';
+const path = require("path");
+const filepath = path.join(__dirname, "../../")
 const fs = require('mz/fs');
 const FileType = require('file-type');
 const fs2 = require('fs');
+
+// eg const file = path.join(__dirname, "../../")
 
 // POST: Register a new user
 exports.createUser = async function ( req, res ) {
@@ -74,7 +78,7 @@ exports.login = async function ( req, res ) {
     }
 };
 
-// LOGOUT: logout user
+//POST LOGOUT: logout user
 exports.logout = async function (req, res) {
     console.log("\nRequest to logout user.....");
     const xAuth = req.headers["x-authorization"]
@@ -139,7 +143,7 @@ exports.editUserInfo = async function ( req, res ) {
         console.log("xauth is ", xAuth);
         console.log("auth user is ", authUser[0]);
         res.status(403).send("token does not match.");
-        return
+        return;
     } if (req.body.password != undefined && req.body.currentPassword == undefined) {
         res.status(400).send("If changing password must provide current password.");
         return;
@@ -202,7 +206,7 @@ exports.getUserImage = async function ( req, res ) {
     }
 };
 
-//////////////////////////
+//PUT user ID image
 exports.putUserImage = async function ( req, res ) {
     // console.log("\nRequest to put image for user.....");
     const headerCheck = req.headers["content-type"];
@@ -267,7 +271,7 @@ exports.putUserImage = async function ( req, res ) {
         }
 };
 
-//////////////////////////////////////////////////
+// DELETE user ID image
 exports.deleteUserImage = async function ( req, res ) {
     console.log("user id in delete is ", req.params.id);
     const tokenCheck = await user.Authenticate(req.params.id);

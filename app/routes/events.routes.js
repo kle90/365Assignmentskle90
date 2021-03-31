@@ -27,4 +27,14 @@ module.exports = function (app) {
 
     app.route(app.rootUrl + '/events/:id/image')
         .get(events.getEventImage);
+
+    app.route(app.rootUrl + '/events/:id')
+        .patch(events.patchAevent);
+
+    app.route(app.rootUrl + '/events/:id')
+        .delete(events.deleteOneEvent);
+
+    app.route(app.rootUrl + '/events/:id1/attendees/id2')
+        .patch(events.patchEventAttendees);
+
 };
