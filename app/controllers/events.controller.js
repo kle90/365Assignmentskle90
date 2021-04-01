@@ -495,6 +495,28 @@ exports.patchEventAttendees = async function (req, res) {
 exports.putEventImage = async function ( req, res ) {
     const eventID = req.params.id;
     console.log("eventID is", eventID)
+    if (req.headers["x-authorization"] == undefined) {
+        res.status(401).send("unauthorized");
+        return;
+    }
+
+    //get user id viaxauth
+    const UserID = await event.getUserIDViaAuth(req.headers["x-authorization"]);
+    console.log("UserID is , ", UserID);
+    const organizerID = await event.getOrganizerID(eventID);
+    console.log("organizerID is ", organizerID)
+    if (organizerID.length == 0) {
+        res.status(404).send('oragnizerId no exits');
+        return;
+    }
+
+    console.log("UserID is ", UserID[0].id);
+    console.log("organizerID is , ", organizerID)
+
+    if (UserID[0].id != organizerID) {
+        res.status(403).send("forbidden");
+        return;
+    }
 
     const headerCheck = req.headers["content-type"];
     if (headerCheck.slice(6) != "jpeg" && headerCheck.slice(6) != "gif" && headerCheck.slice(6) != "png") {
@@ -507,21 +529,15 @@ exports.putEventImage = async function ( req, res ) {
     const checkEventId = await event.eventIDCheck(eventID)
 
 
-    if (req.headers["x-authorization"] == undefined) {
-        res.status(401).send("unauthorized");
-        return;
-    } if (checkEventId.length == 0) {
+
+    if (checkEventId.length == 0) {
         res.status(404).send("Event doesn't exist");
         return;
     }
 
     // user_id = oraganizer id
-    let organizerID = await event.getOrganizerID(eventID);
     //console.log("oraganizer id is", organizerID[0].organizer_id);
-    if (organizerID.length == 0) {
-        res.status(404).send('oragnizerId no exits');
-        return;
-    }
+
 
     //authenticate userid
     const auth = await event.Authenticate(organizerID);
