@@ -86,11 +86,22 @@ exports.postEvents = async function ( req, res ) {
         }
     }
 
+    //check if event exists
+
+    const maxEventID = await event.geteventNumMax();
+
     const organID = await event.getUserIDViaAuth(req.headers["x-authorization"])
-    console.log("oraganID is ", organID);
+    console.log("organID is ", organID);
     if (organID.length == 0) {
         res.status(401).send("no matching auth")
     }
+
+    const eventexistence = await event.checkEventwithNothing(req.body.title);
+    if (eventexistence.length != 0) {
+        res.status(400).send("event already exists");
+        return;
+    }
+
     console.log("category id is ", req.body.categoryIds);
     for (i = 0; i < req.body.categoryIds.length; i ++) {
         check = await event.checkCategory(req.body.categoryIds[i])
@@ -101,7 +112,7 @@ exports.postEvents = async function ( req, res ) {
     }
 
     try {
-        await event.addEvent( req, organID );
+        await event.addEvent( req, res, organID , maxEventID );
         res.status(201).send("created");
     } catch (err) {
         console.log(err)
@@ -109,22 +120,28 @@ exports.postEvents = async function ( req, res ) {
     }
 };
 
+
 //GET ONE EVENT
 exports.getAevent = async function ( req, res ) {
     const eventID = req.params.id;
     console.log("event id is ", eventID)
     try {
-        const result = await event.getOneEvent(eventID);
+        const catList = await event.getCategoryListForGetEvent(eventID);
+        console.log("categoryList is ", catList[0].category);
+        let result = await event.getOneEventMain(eventID);
+        result[0].categories = catList[0].category;
         console.log("result is ", result)
         if (result[0].eventId == null) {
             res.status(404).send("not found");
             return
         } else {
             newArr = []
-            console.log("category id is", result[0].categories.split(','))
+            // if (req.body.categoryIds != null) {
+            //console.log("category id is", result[0].categories.split(','))
             for (i = 0; i < result[0].categories.split(',').length; i++) {
                 newArr.push(Number(result[0].categories.split(',')[i]));
             }
+            // }
             if (result[0].requiresAttendanceControl == 1) {
                 result[0].requiresAttendanceControl = true;
             } else {

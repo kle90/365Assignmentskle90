@@ -114,8 +114,16 @@ exports.getUserInfo = async function ( req, res ) {
         if ( result.length == 0 ) {
             res.status( 404 ).send( "User not found!" )
         } else if ( req.headers["x-authorization"] != undefined ) {
-            res.status( 200 ).send({"firstName": result[0].first_name, "lastName": result[0].last_name,
-                "email": result[0].email}); //When user is authenticated
+            const token = await user.Authenticate(ID);
+            console.log(token);
+            if (token[0].auth_token == req.headers["x-authorization"]) {
+                res.status(200).send({
+                    "firstName": result[0].first_name, "lastName": result[0].last_name,
+                    "email": result[0].email
+                }); //When user is authenticated
+            } else {
+                res.status( 200 ).send({"firstName": result[0].first_name, "lastName": result[0].last_name}); //When user is not authenticated
+            }
         } else if (req.headers["x-authorization"] == undefined) {
             res.status( 200 ).send({"firstName": result[0].first_name, "lastName": result[0].last_name}); //When user is not authenticated
         }

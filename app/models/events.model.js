@@ -93,8 +93,17 @@ exports.getEvents = async function (req, res) {
     return rows
 };
 
+//get eventid num max
+exports.geteventNumMax = async function () {
+    const conn = await db.getPool().getConnection();
+    const sql = "SELECT max(event.id) as maxNum FROM event";
+    const [rows] = await conn.query(sql);
+    conn.release();
+    return rows;
+}
+
 // POST AN EVENT
-exports.addEvent = async function (req, res, organID) {
+exports.addEvent = async function (req, res, organID, maxEventID) {
     const conn = await db.getPool().getConnection();
     let sqlDateVal = req.body.date;
     let sqlIsOnlineVal = null;
@@ -104,14 +113,10 @@ exports.addEvent = async function (req, res, organID) {
     let sqlRAControl = null;
     let sqlFeeVal = 0.00;
 
-    let sqlOraganizerID = `SELECT user.id FROM user WHERE auth_token = "${req.headers["x-authorization"]}"`;
-    const OraganizerID = await conn.query(sqlOraganizerID);
+    console.log("maxEventID is ", maxEventID[0].maxNum)
 
-    console.log("oraganier id is", OraganizerID);
-
-
-    let sqlInsert = `INSERT INTO event (title, description, date`
-    let sqlValues = `VALUES ("${req.body.title}", "${req.body.description}", "${sqlDateVal}"`
+    let sqlInsert = `INSERT INTO event (id, title, description, date`
+    let sqlValues = `VALUES (${maxEventID[0].maxNum + 1}, "${req.body.title}", "${req.body.description}", "${sqlDateVal}"`
 
     if (req.body.isOnline != undefined) {
         if (req.body.isOnline == true) {
@@ -143,7 +148,10 @@ exports.addEvent = async function (req, res, organID) {
         sqlValues += `, "${sqlVenueVal}"`;
     }
 
-    let sqlFinal = sqlInsert + ", " + "organizer_id" + ")" + " " + sqlValues + `, ${OraganizerID[0][0].id}` + ")";
+    // console.log("oraganier id is", OraganizerID);
+    // console.log("organID is ", organID)
+
+    let sqlFinal = sqlInsert + ", " + "organizer_id" + ")" + " " + sqlValues + `, ${organID[0].id}` + ")";
     //
     // let sqlFinal = `INSERT INTO event (title, description, date, is_online, url, venue, capacity, ` +
     //     `requires_attendance_control, fee, organizer_id) VALUES ("${req.body.title}", "${req.body.description}", ${sqlDateVal}, ${sqlIsOnlineVal}, ${sqlUrlVal},
@@ -151,12 +159,33 @@ exports.addEvent = async function (req, res, organID) {
     // [req.body.title, req.body.description, sqlDateVal, sqlIsOnlineVal,
     //     sqlUrlVal, sqlVenueVal, sqlCapacityVal, sqlRAControl, sqlFeeVal, oraganID]
     const [row] = await conn.query(sqlFinal);
+
+    console.log("req.body.categoryIds is ", req.body.categoryIds)
+    console.log("row in post event model is ", row.insertId);
+
+    let sqlinserCat = "INSERT INTO event_category (event_category.event_id, event_category.category_id) VALUES (";
+    for (i=0; i < req.body.categoryIds.length; i++) {
+        let sqlinserCat = "INSERT INTO event_category (event_category.event_id, event_category.category_id) VALUES (";
+        sqlinserCat += `${row.insertId}, ${req.body.categoryIds[i]})`
+        console.log("cat insert sql is ", sqlinserCat)
+        await conn.query(sqlinserCat);
+    }
+
     conn.release();
-    return row;
 }
 
 // GET ONE EVENT
-exports.getOneEvent = async function (eventID) {
+exports.getCategoryListForGetEvent = async function (eventID) {
+    const conn = await db.getPool().getConnection();
+    const sql = `SELECT GROUP_CONCAT(DISTINCT event_category.category_id) as category FROM event_category 
+    JOIN event On event_category.event_id = event.id WHERE event_category.event_id = ${eventID}`
+    const [rows] = await conn.query(sql);
+    conn.release();
+    return rows;
+}
+
+
+exports.getOneEventMain = async function (eventID) {
     console.log( "Request to get a single event from the database using id..." );
     const conn = await db.getPool().getConnection();
     console.log("I have entered this function")
@@ -174,7 +203,8 @@ exports.getOneEvent = async function (eventID) {
         `WHERE event.id = ${eventID}`
     const [ rows ] = await conn.query(getEventsql);
     conn.release();
-    console.log(rows)
+    console.log("sql in getonevent is ", getEventsql)
+    console.log("rows in get one event is ", rows);
     return rows;
 };
 
@@ -366,6 +396,14 @@ exports.checkCategory = async function ( categoryId ) {
     conn.release();
     return rows;
 };
+
+exports.checkEventwithNothing = async function(title) {
+    const conn = await db.getPool().getConnection();
+    const sql = `SELECT * FROM event WHERE title = "${title}"`;
+    const [rows] = await conn.query(sql)
+    conn.release();
+    return rows;
+}
 
 exports.eventIDCheck = async function (eventID) {
     const conn = await db.getPool().getConnection();
