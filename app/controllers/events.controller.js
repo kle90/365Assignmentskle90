@@ -87,7 +87,6 @@ exports.postEvents = async function ( req, res ) {
     }
 
     //check if event exists
-
     const maxEventID = await event.geteventNumMax();
 
     const organID = await event.getUserIDViaAuth(req.headers["x-authorization"])
@@ -112,7 +111,7 @@ exports.postEvents = async function ( req, res ) {
     }
 
     try {
-        await event.addEvent( req, res, organID , maxEventID );
+        await event.addEvent( req, res, organID , maxEventID);
         res.status(201).send("created");
     } catch (err) {
         console.log(err)
@@ -169,6 +168,7 @@ exports.getAevent = async function ( req, res ) {
 exports.patchAevent = async function ( req, res ) {
     const eventID = req.params.id;
     console.log("eventID is , ", eventID);
+    console.log("req body is ", req.body)
 
     const currentDate = new Date();
 
@@ -224,8 +224,12 @@ exports.patchAevent = async function ( req, res ) {
         categoryList.push(allCategories[i].categoryId)
     }
 
+    console.log(allCategories);
+
     console.log("allCategories is ", categoryList);
     console.log("req.body.categoryIds is ", req.body.categoryIds)
+    let catList = []
+
     if (req.body.categoryIds != undefined) {
         for (i = 0; i < req.body.categoryIds.length; i++) {
             if (categoryList.includes(req.body.categoryIds[i]) == false) {
@@ -233,6 +237,7 @@ exports.patchAevent = async function ( req, res ) {
                 return;
             }
         }
+        await event.deleterowsIneventCat(eventID);
     }
 
     try {
@@ -478,7 +483,7 @@ exports.patchEventAttendees = async function (req, res) {
     }
 
     try {
-
+        await events.patchAttenEvent(req.body.status)
         res.status(200).send("ok");
     } catch (err) {
         console.log(err)
@@ -520,6 +525,8 @@ exports.putEventImage = async function ( req, res ) {
 
     //authenticate userid
     const auth = await event.Authenticate(organizerID);
+    console.log("auth is pain ", auth)
+
 
     if (auth.length == 0) {
         res.status(403).send("Forbidden");

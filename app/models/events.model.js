@@ -148,11 +148,15 @@ exports.addEvent = async function (req, res, organID, maxEventID) {
         sqlValues += `, "${sqlVenueVal}"`;
     }
 
+    console.log("organID is ", organID)
+
     let sqlFinal = sqlInsert + ", " + "organizer_id" + ")" + " " + sqlValues + `, ${organID[0].id}` + ")";
     const [row] = await conn.query(sqlFinal);
 
     console.log("req.body.categoryIds is ", req.body.categoryIds)
     console.log("row in post event model is ", row.insertId);
+
+
 
     let sqlinserCat = "INSERT INTO event_category (event_category.event_id, event_category.category_id) VALUES (";
     for (i=0; i < req.body.categoryIds.length; i++) {
@@ -197,6 +201,13 @@ exports.getOneEventMain = async function (eventID) {
     console.log("sql in getonevent is ", getEventsql)
     console.log("rows in get one event is ", rows);
     return rows;
+};
+
+exports.deleterowsIneventCat = async function (eventID) {
+    const conn = await db.getPool().getConnection();
+    const sql = `DELETE FROM event_category WHERE event_id = ${eventID}`;
+    await conn.query(sql);
+    conn.release();
 };
 
 //PATCH event
@@ -258,7 +269,7 @@ exports.patchAevent = async function (req, res, eventID) {
     sqlMain = "UPDATE event SET"
     sqlWhere = `WHERE event.id = ${eventID}`;
     let count = 0
-    for (i=0; i <sqlList.length; i++) {
+    for (i=0; i < sqlList.length; i++) {
         if (sqlList[i] != "") {
             if (count == 0) {
                 count += 1
@@ -266,10 +277,19 @@ exports.patchAevent = async function (req, res, eventID) {
             } else {
                 sqlMain += ", " + sqlList[i];
             }
-
         }
-
     }
+
+    let sqlcatIdUpate = `INSERT INTO event_category SET (event_id, category_id)`;
+
+    for (i=0; i<req.body.categoryIds.length; i++) {
+        sqlcatIdUpate = `INSERT INTO event_category (event_id, category_id)`;
+        sqlcatIdUpate += ` VALUES (${eventID}, ${req.body.categoryIds[i]})`;
+        console.log("sqlcatIdUpate is ", sqlcatIdUpate)
+        await conn.query(sqlcatIdUpate);
+    }
+
+
 
     let sqlFinal = sqlMain + " " + sqlWhere
     console.log("sqlFinal is ", sqlFinal);
