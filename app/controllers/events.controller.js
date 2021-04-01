@@ -510,6 +510,7 @@ exports.putEventImage = async function ( req, res ) {
         return;
     }
 
+    console.log(" ------------------------------- ")
     console.log("UserID is ", UserID[0].id);
     console.log("organizerID is , ", organizerID)
 
