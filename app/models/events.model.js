@@ -148,16 +148,7 @@ exports.addEvent = async function (req, res, organID, maxEventID) {
         sqlValues += `, "${sqlVenueVal}"`;
     }
 
-    // console.log("oraganier id is", OraganizerID);
-    // console.log("organID is ", organID)
-
     let sqlFinal = sqlInsert + ", " + "organizer_id" + ")" + " " + sqlValues + `, ${organID[0].id}` + ")";
-    //
-    // let sqlFinal = `INSERT INTO event (title, description, date, is_online, url, venue, capacity, ` +
-    //     `requires_attendance_control, fee, organizer_id) VALUES ("${req.body.title}", "${req.body.description}", ${sqlDateVal}, ${sqlIsOnlineVal}, ${sqlUrlVal},
-    //     ${sqlVenueVal}, ${sqlCapacityVal}, ${sqlFeeVal}, ${sqlRAControl}, ${OraganizerID[0][0].id})`;
-    // [req.body.title, req.body.description, sqlDateVal, sqlIsOnlineVal,
-    //     sqlUrlVal, sqlVenueVal, sqlCapacityVal, sqlRAControl, sqlFeeVal, oraganID]
     const [row] = await conn.query(sqlFinal);
 
     console.log("req.body.categoryIds is ", req.body.categoryIds)
